@@ -202,6 +202,8 @@ public class ReflectKit {
                     }
                     if(value[variable.name] is JSONSerializable) {
                         json2ClassObject(jsonValue,value[variable.name]);
+                    } else if(type == 'Object') {
+                        value[variable.name] = jsonValue;
                     } else {
                         throw new Error("Any Object property must implements JSONSerializable");
                     }

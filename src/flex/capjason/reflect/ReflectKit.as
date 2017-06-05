@@ -37,17 +37,39 @@ public class ReflectKit {
             }
             clonableProps.push(accessor.name);
         }
-
         for(i = 0;i < clonableProps.length; ++i) {
             var prop:String = clonableProps[i];
             var value:* = object[prop];
-            if(value is Clonable && deepClone) {
-                res[prop] = cloneValueObject(value,deepClone);
-            } else {
+            if(!deepClone) {
                 res[prop] = value;
+            } else {
+                res[prop] = cloneValue(value);
             }
         }
         return res;
+    }
+
+    private static function cloneValue(value:*):* {
+        if(isPrimitiveType(value)) {
+            return value;
+        }
+        if(value is Clonable) {
+            return cloneValueObject(value,true);
+        }
+
+        if(value is Array) {
+            var arr:Array = [];
+            var valueArr:Array = value as Array;
+            for(var i:int = 0;i < valueArr.length; ++i) {
+                arr.push(cloneValue(valueArr[i]));
+            }
+            return arr;
+        }
+
+        if(value is Vector) {
+            return (value as Vector).concat();
+        }
+        return value;
     }
 
     /**
@@ -73,14 +95,13 @@ public class ReflectKit {
         }
 
         for(i = 0;i < reflection.accessors.length; ++i) {
+            if(reflection.accessors[i].access != AccessType.READWRITE) {
+                continue;
+            }
             accessibleVariables.push(reflection.accessors[i]);
         }
         for(i = 0;i < accessibleVariables.length; ++i) {
             var variable:ReflectionObject = accessibleVariables[i];
-            var accessor:ReflectionAccessor = variable as ReflectionAccessor;
-            if(accessor && accessor.access != AccessType.READWRITE) {
-                continue;
-            }
             var metadata:ReflectionMetadata = variable.getMetadata("JSON");
             //check null value
             if(!keepNullValue) {
@@ -109,13 +130,93 @@ public class ReflectKit {
         return obj;
     }
 
+
+    public static function json2ClassObject(json:Object,value:JSONSerializable):void {
+        var reflection:ReflectionClass = new ReflectionClass(value);
+        var accessibleVariables:Vector.<ReflectionObject> = new Vector.<ReflectionObject>();
+        var i:int;
+        for(i = 0;i < reflection.variables.length; ++i) {
+            accessibleVariables.push(reflection.variables[i]);
+        }
+
+        for(i = 0;i < reflection.accessors.length; ++i) {
+            if(reflection.accessors[i].access != AccessType.READWRITE) {
+                continue;
+            }
+            accessibleVariables.push(reflection.accessors[i]);
+        }
+
+        for (i = 0;i < accessibleVariables.length; ++i) {
+            var variable:ReflectionObject = accessibleVariables[i];
+            var jsonMetadata:ReflectionMetadata = variable.getMetadata("JSON");
+            var propertyName:String = variable.name;
+            if(jsonMetadata) {
+                if(jsonMetadata.hasDirectArgValue("transient") || jsonMetadata.hasArgument("transient")) {
+                    continue;
+                }
+                var arg:ReflectionArgument = jsonMetadata.getArgument("name");
+                if(arg != null) {
+                    propertyName = String(arg.value);
+                }
+            }
+
+            if(json.hasOwnProperty(propertyName)) {
+                var jsonValue:* = json[propertyName];
+                if(isPrimitiveType(jsonValue)) {
+                    value[variable.name] = jsonValue;
+                } else if(jsonValue is Array) {
+                    var jsonArray:Array = jsonValue as Array;
+                    var arr:Array = [];
+                    var typeArg:ReflectionArgument = jsonMetadata ? jsonMetadata.getArgument("arrayDataType") : null;
+                    var clss:Class = typeArg ?  getDefinitionByName(String(typeArg.value)) as Class : null;
+                    for(i = 0;i < jsonArray.length; ++i) {
+                        var arrItemValue:* = clss ? new clss() : null;
+                        if(!arrItemValue is JSONSerializable) {
+                            arr.push(jsonArray[i]);
+                        } else {
+                            json2ClassObject(jsonArray[i],arrItemValue as JSONSerializable)
+                            arr.push(arrItemValue);
+                        }
+                    }
+                    value[variable.name] = arr;
+                } else if( jsonValue is Object) {
+                    if(value[variable.name] == null) {
+                        var type:String ;
+                        var accessor:ReflectionAccessor = variable as ReflectionAccessor;
+                        if(accessor) {
+                            type = accessor.type;
+                        } else {
+                            var rf:ReflectionVariable = variable as ReflectionVariable;
+                            if(rf) {
+                                type = rf.type;
+                            }
+                        }
+                        if(type == null) {
+                            value[variable.name] = jsonValue;
+                            continue;
+                        }
+                        
+                    }
+
+
+
+
+
+                    json2ClassObject(jsonValue,value[variable.name]);
+                }
+            }
+        }
+
+
+    }
+
     private static function value2Json(value:*,keepNullValue:Boolean = true):Object {
         var i:int;
         if(value is Array) {
             var arr:Array = [];
             var valueArr:Array = value as Array;
             for(i = 0;i < valueArr.length; ++i) {
-                arr.push(value2Json(valueArr[i]));
+                arr.push(value2Json(valueArr[i],keepNullValue));
             }
             return arr;
         }

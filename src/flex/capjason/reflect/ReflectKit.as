@@ -132,6 +132,9 @@ public class ReflectKit {
 
 
     public static function json2ClassObject(json:Object,value:JSONSerializable):void {
+        if(value == null) {
+            return ;
+        }
         var reflection:ReflectionClass = new ReflectionClass(value);
         var accessibleVariables:Vector.<ReflectionObject> = new Vector.<ReflectionObject>();
         var i:int;
@@ -146,8 +149,7 @@ public class ReflectKit {
             accessibleVariables.push(reflection.accessors[i]);
         }
 
-        for (i = 0;i < accessibleVariables.length; ++i) {
-            var variable:ReflectionObject = accessibleVariables[i];
+        for each (var variable:ReflectionObject in accessibleVariables) {
             var jsonMetadata:ReflectionMetadata = variable.getMetadata("JSON");
             var propertyName:String = variable.name;
             if(jsonMetadata) {
@@ -162,7 +164,7 @@ public class ReflectKit {
 
             if(json.hasOwnProperty(propertyName)) {
                 var jsonValue:* = json[propertyName];
-                if(isPrimitiveType(jsonValue)) {
+                if(isPrimitiveType(jsonValue) || jsonValue == null) {
                     value[variable.name] = jsonValue;
                 } else if(jsonValue is Array) {
                     var jsonArray:Array = jsonValue as Array;
@@ -171,7 +173,7 @@ public class ReflectKit {
                     var clss:Class = typeArg ?  getDefinitionByName(String(typeArg.value)) as Class : null;
                     for(i = 0;i < jsonArray.length; ++i) {
                         var arrItemValue:* = clss ? new clss() : null;
-                        if(!arrItemValue is JSONSerializable) {
+                        if(!(arrItemValue is JSONSerializable)) {
                             arr.push(jsonArray[i]);
                         } else {
                             json2ClassObject(jsonArray[i],arrItemValue as JSONSerializable)
@@ -181,32 +183,31 @@ public class ReflectKit {
                     value[variable.name] = arr;
                 } else if( jsonValue is Object) {
                     if(value[variable.name] == null) {
-                        var type:String ;
+                        var type:String = null;
                         var accessor:ReflectionAccessor = variable as ReflectionAccessor;
                         if(accessor) {
                             type = accessor.type;
                         } else {
-                            var rf:ReflectionVariable = variable as ReflectionVariable;
-                            if(rf) {
-                                type = rf.type;
+                            var rv:ReflectionVariable = variable as ReflectionVariable;
+                            if(rv) {
+                                type = rv.type;
                             }
                         }
-                        if(type == null) {
-                            value[variable.name] = jsonValue;
-                            continue;
+                        var clazz:Class = type != null ? getDefinitionByName(type) as Class : null;
+                        if(clazz != null) {
+                            value[variable.name] = new clazz();
+                        } else {
+                            throw new Error("Cannot determine class type of property " + variable.name);
                         }
-                        
                     }
-
-
-
-
-
-                    json2ClassObject(jsonValue,value[variable.name]);
+                    if(value[variable.name] is JSONSerializable) {
+                        json2ClassObject(jsonValue,value[variable.name]);
+                    } else {
+                        throw new Error("Any Object property must implements JSONSerializable");
+                    }
                 }
             }
         }
-
 
     }
 
@@ -221,7 +222,7 @@ public class ReflectKit {
             return arr;
         }
 
-        if(isPrimitiveType(value)) {
+        if(isPrimitiveType(value) || value == null) {
             return value;
         }
 
@@ -240,7 +241,7 @@ public class ReflectKit {
     private static function isPrimitiveType(value:*):Boolean {
         return value is String || value is Number
                 || value is int || value is uint
-                || value is Boolean || value == null;
+                || value is Boolean;
     }
 
 

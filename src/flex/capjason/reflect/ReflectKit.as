@@ -171,6 +171,13 @@ public class ReflectKit {
                     var arr:Array = [];
                     var typeArg:ReflectionArgument = jsonMetadata ? jsonMetadata.getArgument("arrayDataType") : null;
                     var clss:Class = typeArg ?  getDefinitionByName(String(typeArg.value)) as Class : null;
+                    if(clss) {
+                        var r:ReflectionClass = new ReflectionClass(clss);
+                        if(r.instanceReflection.constructor
+                                && r.instanceReflection.constructor.requiredParamCount > 0) {
+                            throw new Error("DataType of Array must have default constructor,which takes no parameters");
+                        }
+                    }
                     for(i = 0;i < jsonArray.length; ++i) {
                         var arrItemValue:* = clss ? new clss() : null;
                         if(!(arrItemValue is JSONSerializable)) {
@@ -195,6 +202,11 @@ public class ReflectKit {
                         }
                         var clazz:Class = type != null ? getDefinitionByName(type) as Class : null;
                         if(clazz != null) {
+                            var r:ReflectionClass = new ReflectionClass(clazz);
+                            if(r.instanceReflection.constructor
+                                    && r.instanceReflection.constructor.requiredParamCount > 0) {
+                                throw new Error("Object property must have default constructor which takes no parameters");
+                            }
                             value[variable.name] = new clazz();
                         } else {
                             throw new Error("Cannot determine class type of property " + variable.name);

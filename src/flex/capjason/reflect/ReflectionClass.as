@@ -46,7 +46,7 @@ public class ReflectionClass extends ReflectionObject {
             reflection._prototypeChain.push(tag.@type);
         }
 
-        if(xml.localName() == "factory") {
+        if(xml.localName() == "factory" && reflection._prototypeChain.length > 0) {
             reflection._base = reflection._prototypeChain[0];
         }
 

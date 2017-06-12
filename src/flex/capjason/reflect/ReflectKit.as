@@ -132,7 +132,7 @@ public class ReflectKit {
 
 
     public static function json2ClassObject(json:Object,value:JSONSerializable):void {
-        if(value == null) {
+        if(value == null || json == null) {
             return ;
         }
         var reflection:ReflectionClass = new ReflectionClass(value);

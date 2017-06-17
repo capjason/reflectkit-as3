@@ -17,7 +17,7 @@ public class ReflectionAccessor extends ReflectionObject {
         accessor._declaredBy = xml.@declaredBy;
         var accessStr:String = xml.@access;
         accessor._access = AccessType.fromStr(accessStr);
-        accessor.parseMetadata(xml.@metadata);
+        accessor.parseMetadata(xml.metadata);
         return accessor;
     }
 

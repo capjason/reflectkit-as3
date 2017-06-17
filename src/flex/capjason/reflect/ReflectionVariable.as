@@ -17,7 +17,7 @@ public class ReflectionVariable extends ReflectionObject {
     }
 
 
-    public function get type():* {
+    public function get type():String{
         return _type;
     }
 }

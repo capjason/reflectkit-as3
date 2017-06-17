@@ -5,6 +5,10 @@ package flex.capjason.reflect {
 import flash.utils.getDefinitionByName;
 import flash.utils.getQualifiedClassName;
 
+import mx.collections.ArrayCollection;
+
+import mx.collections.IList;
+
 public class ReflectKit {
     public function ReflectKit() {
 
@@ -187,7 +191,18 @@ public class ReflectKit {
                             arr.push(arrItemValue);
                         }
                     }
-                    value[variable.name] = arr;
+                    var type:String ;
+                    if(variable is ReflectionVariable) {
+                        type = (variable as ReflectionVariable).type;
+                    } else if(variable is ReflectionAccessor) {
+                        type = (variable as ReflectionAccessor).type;
+                    }
+
+                    if(type == getQualifiedClassName(ArrayCollection)) {
+                        value[variable.name] = new ArrayCollection(arr);
+                    } else {
+                        value[variable.name] = arr;
+                    }
                 } else if( jsonValue is Object) {
                     if(value[variable.name] == null) {
                         var type:String = null;
@@ -227,9 +242,15 @@ public class ReflectKit {
 
     private static function value2Json(value:*,keepNullValue:Boolean = true):Object {
         var i:int;
-        if(value is Array) {
+        if(value is Array || value is ArrayCollection) {
             var arr:Array = [];
-            var valueArr:Array = value as Array;
+            var valueArr:Array
+            if(value is ArrayCollection) {
+                valueArr = (value as ArrayCollection).source;
+            } else {
+                valueArr = value as Array;
+            }
+
             for(i = 0;i < valueArr.length; ++i) {
                 arr.push(value2Json(valueArr[i],keepNullValue));
             }

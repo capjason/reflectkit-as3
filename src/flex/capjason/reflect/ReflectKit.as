@@ -107,13 +107,35 @@ public class ReflectKit {
         for(i = 0;i < accessibleVariables.length; ++i) {
             var variable:ReflectionObject = accessibleVariables[i];
             var metadata:ReflectionMetadata = variable.getMetadata("JSON");
-            //check null value
             if(!keepNullValue) {
+                //check null value
                 var nullValue:* = null;
+                var hasNullValue:Boolean = false;
                 if(metadata && metadata.hasArgument("nullValue")) {
                     nullValue = metadata.getArgument("nullValue").value;
+                    hasNullValue = true;
                 }
-                if(serializable[variable.name] == nullValue) {
+
+                var type:String;
+                if(variable is ReflectionVariable) {
+                    type = (variable as ReflectionVariable).type;
+                } else if(variable is ReflectionAccessor) {
+                    type = (variable as ReflectionAccessor).type;
+                }
+
+                var serializableValue:* = serializable[variable.name];
+                if(hasNullValue) {
+                    if(serializableValue == nullValue) {
+                        continue;
+                    }
+                } else {
+                    if(isDefaultNullValue(type,serializableValue)){
+                        continue;
+                    }
+                }
+
+                if((hasNullValue && serializable[variable.name] == nullValue)
+                || (serializable[variable.name] == null)) {
                     continue;
                 }
             }
@@ -129,9 +151,23 @@ public class ReflectKit {
                     property = String(arg.value);
                 }
             }
-            obj[property]  = value2Json(serializable[variable.name],keepNullValue);
+            var value:*  = value2Json(serializable[variable.name],keepNullValue);
+            obj[property] = value;
         }
         return obj;
+    }
+
+    //TODO
+    private static function isDefaultNullValue(type:String,value:*):Boolean {
+        if(!type){
+            return false;
+        }
+        var numtypes:Array = ["int","uint","number"];
+        if(numtypes.indexOf(type.toLowerCase()) == -1) {
+            return value == null;
+        } else {
+            return isNaN(value);
+        }
     }
 
 
